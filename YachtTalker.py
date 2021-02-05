@@ -105,7 +105,8 @@ def get_can_data():  # function runs in background, reads and converts CAN bus d
             heading_radian = int(radian_string, 16) / 10000
             heading_degrees = round(heading_radian * 180 / 3.1415927, 2)
             if abs(heading_magnetic - heading_degrees) > 2:
-                shadow_update_msg['state']['reported']['can_bus_data']['heading_magnetic'] = str(heading_degrees)
+                heading_magnetic = heading_degrees
+                shadow_update_msg['state']['reported']['can_bus_data']['heading_magnetic'] = str(heading_magnetic)
                 shadow_msg_Json = json.dumps(shadow_update_msg)
                 myAWSIoTMQTTClient.publish("$aws/things/Shadow_Test_Thing/shadow/update", shadow_msg_Json, 1)
                 print(shadow_msg_Json)
@@ -171,6 +172,7 @@ def turn_off_can_bus():
 
 def turn_on_can_bus():
     #  Start CAN Bus interface and configure
+    global can0
     os.system('sudo ifconfig can0 down')
     os.system('sudo ip link set can0 up type can bitrate 250000')
     os.system('sudo ifconfig can0 up')
