@@ -3,6 +3,7 @@
 import os
 import can
 import sys
+import datetime
 import json
 from time import *
 from tkinter import *
@@ -67,12 +68,13 @@ shadow_update_msg = {
             {
       "reported": {
                 "can_bus_data": {
-                            "fresh_water_level": "358",
+                            "fresh_water_level": "325",
                             "heading_magnetic": "090",
                             "black_water_level": "18",
                             "lattitude": "",
                             "longitude": "",
-                            "fuel_tank_level": ""
+                            "fuel_tank_level": "",
+                            "time":"12:00"
                                 }
                 }
             }
@@ -103,16 +105,10 @@ def get_can_data():  # function runs in background, reads and converts CAN bus d
             heading_radian = int(radian_string, 16) / 10000
             heading_degrees = round(heading_radian * 180 / 3.1415927, 2)
             if abs(heading_magnetic - heading_degrees) > 2:
-                heading_magnetic = heading_degrees
-                alexa_message['can_bus_data']['heading_magnetic'] = str(heading_degrees)
-                messageJson = json.dumps(alexa_message)
-                shadow_update_msg['can_bus_data']['heading_magnetic'] = str(heading_degrees)
+                shadow_update_msg['state']['reported']['can_bus_data']['heading_magnetic'] = str(heading_degrees)
                 shadow_msg_Json = json.dumps(shadow_update_msg)
-                myAWSIoTMQTTClient.publish(topic, messageJson, 1)
-                myAWSIoTMQTTClient.publish("$aws/things/OA7821_PI4_Shadow/shadow/update", shadow_msg_Json, 1)
-
-                print('Published topic %s: %s\n' % (topic, json.dumps(alexa_message)))
-                print(f'Heading is {str(heading_degrees)} magnetic  ')
+                myAWSIoTMQTTClient.publish("$aws/things/Shadow_Test_Thing/shadow/update", shadow_msg_Json, 1)
+                print(shadow_msg_Json)
 
         if "9f211" in can_packet:                      # 9f211 are all tank level packets
             # level_raw_string = (str_msg[str_msg.find("DLC") + 14:str_msg.find("DLC") + 19])
@@ -124,40 +120,38 @@ def get_can_data():  # function runs in background, reads and converts CAN bus d
                 tank_level = int(360 * percent)     # max tank volume is 360
                 if abs(fresh_water_level-tank_level) > 4:
                     fresh_water_level = tank_level
-                    alexa_message['can_bus_data']['fresh_water_level'] = str(tank_level)
-                    messageJson = json.dumps(alexa_message)
-                    myAWSIoTMQTTClient.publish(topic, messageJson, 1)
-                    print('Published topic %s: %s\n' % (topic, json.dumps(alexa_message)))
-                    print(f'Fresh water tank level is {tank_level} gallons')
+                    shadow_update_msg['state']['reported']['can_bus_data']['fresh_water_level'] = str(fresh_water_level)
+                    shadow_msg_Json = json.dumps(shadow_update_msg)
+                    myAWSIoTMQTTClient.publish("$aws/things/Shadow_Test_Thing/shadow/update", shadow_msg_Json, 1)
+                    print(shadow_msg_Json)
             if '9f21158  52' in tank_level_string:
                 offset = tank_level_string.find(' 52')
                 percent = int(tank_level_string[offset + 7:offset + 9] + tank_level_string[offset + 4:offset + 6], 16) / 25000
                 tank_level = int(175 * percent)     # max tank volume is 175
                 if abs(black_water_level-tank_level) > 2:
                     black_water_level = tank_level
-                    alexa_message['can_bus_data']['black_water_level'] = str(tank_level)
-                    messageJson = json.dumps(alexa_message)
-                    myAWSIoTMQTTClient.publish(topic, messageJson, 1)
-                    print('Published topic %s: %s\n' % (topic, json.dumps(alexa_message)))
-                    print(f'Black water tank level is {tank_level} gallons')
+                    shadow_update_msg['state']['reported']['can_bus_data']['black_water_level'] = str(black_water_level)
+                    shadow_msg_Json = json.dumps(shadow_update_msg)
+                    myAWSIoTMQTTClient.publish("$aws/things/Shadow_Test_Thing/shadow/update", shadow_msg_Json, 1)
+                    print(shadow_msg_Json)
             if '9f21158  01' in tank_level_string:
                 offset = tank_level_string.find(' 01')
                 percent = int(tank_level_string[offset + 7:offset + 9] + tank_level_string[offset + 4:offset + 6], 16) / 25000
                 tank_level = int(1000 * percent) * 2     # max tank volume is 1000 per side times 2 sides
                 if abs(fuel_tank_level-tank_level) > 5:
                     fuel_tank_level = tank_level
-                    alexa_message['can_bus_data']['fuel_tank_level'] = str(tank_level)
-                    messageJson = json.dumps(alexa_message)
-                    myAWSIoTMQTTClient.publish(topic, messageJson, 1)
-                    print('Published topic %s: %s\n' % (topic, json.dumps(alexa_message)))
-                    print(f'Fuel tank level is {tank_level} gallons')
+                    shadow_update_msg['state']['reported']['can_bus_data']['fuel_water_level'] = str(fuel_tank_level)
+                    shadow_msg_Json = json.dumps(shadow_update_msg)
+                    myAWSIoTMQTTClient.publish("$aws/things/Shadow_Test_Thing/shadow/update", shadow_msg_Json, 1)
+                    print(shadow_msg_Json)
 
-
+current_time = time()
+print(datetime.datetime.fromtimestamp(current_time).strftime('%Y-%m-%d %H:%M:%S'))
 
 
 win = Tk()  # Generate parent window for foreground GUI app
 win.title("CAN - GUI Test Program")
-win.geometry('700x500')
+win.geometry('500x250')
 
 def start_bg_canbus():
     can_thread = threading.Thread(target=get_can_data, daemon=True)
